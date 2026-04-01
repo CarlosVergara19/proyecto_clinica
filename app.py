@@ -2,25 +2,101 @@ import streamlit as st
 from services.data_loader import load_data, save_data
 from services.validations import validar_columnas
 from services.crud import create_equipo
+from services.qr import generar_qr
 
-st.set_page_config(page_title="Sistema Inventario Clínica", layout="wide")
+st.set_page_config(
+    page_title="Sistema Inventario Clínica",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+st.markdown("""
+<style>
+
+/* Caja blanca */
+.header-box {
+    
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
+}
+
+/* Logo */
+.header-logo {
+    width: 120px;
+}
+            
+/* 🔵 PC (GRANDE COMO QUIERES) */
+.title-main {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 0;
+    color: black;
+}
+
+.subtitle {
+    font-size: 22px;
+    margin-top: 0;
+    color: #black;
+}
+
+/* 📱 MÓVIL AUTOMÁTICO */
+@media (max-width: 768px) {
+
+    .title-main {
+        font-size: 50px !important;
+    }
+
+    .subtitle {
+        font-size: 30px !important;
+    }
+
+    .header-box {
+        padding: 12px;
+    }
+            
+    .header-logo {
+        width: 80px;
+    }
+}
+
+/* 📱 MÓVIL PEQUEÑO */
+@media (max-width: 480px) {
+
+    .title-main {
+        font-size: 33px !important;
+    }
+
+    .subtitle {
+        font-size: 25px !important;
+    }
+
+    .header-logo {
+        width: 60px;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 
+# 🔹 CONTENEDOR
+with st.container():
 
-col1, col2 = st.columns([4, 1])
+  col1, col2 = st.columns([4, 1])
 
 with col1:
     st.markdown("""
-        <div  style="background-color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;
-                box-shadow: 0px 4px 10px rgba(0,0,0,0.05);">
-        <h1 style='margin-bottom:0; color: black;'>🏥 Sistema de Inventario</h1>
-        <h4 style='margin-top:0; color: black;'>Clínica Regional San Jorge</h4>
+        <div class="header-box">
+            <h1 class="title-main"> Sistema de Inventario</h1>
+            <h4 class="subtitle">🏥 Clínica Regional San Jorge</h4>
         </div>
-       
     """, unsafe_allow_html=True)
 
 with col2:
-    st.image("assets/clinica.jpg", use_container_width=True)
+    st.image("assets/clinica.jpg", width=400)
+
 # =============================
 # OPCIONES PREDEFINIDAS
 # =============================
@@ -79,6 +155,7 @@ OPCIONES_UNIDAD = [
     "TALENTO HUMANO", "CALIDAD", "SISTEMAS", "SST",
     "CARTERA", "CONTABILIDAD", "SIAU", "ARCHIVO"
 ]
+
 try:
     df = load_data()
     validar_columnas(df)
@@ -86,11 +163,13 @@ except Exception as e:
     st.error(str(e))
     st.stop()
 
+query_params = st.query_params
 
+id_url = query_params.get("id", None)
 
 menu = st.sidebar.radio(
     "Navegación",
-    ["Inventario", "Agregar equipo", "Actualizar / Baja", "Dashboard"]
+    ["Inventario", "Agregar equipo", "Actualizar / Baja", "Historial" , "Dashboard"]
 )
 
 # =============================
@@ -144,6 +223,7 @@ if menu == "Inventario":
 
             aplicar = st.form_submit_button("Aplicar filtros")
 
+        
         # ================= FILTRO =================
         if aplicar:
 
@@ -168,6 +248,23 @@ if menu == "Inventario":
         st.markdown(f"### Resultados: {len(df_filtrado)} equipo(s)")
         st.dataframe(df_filtrado, use_container_width=True)
 
+
+        st.subheader("Generar QR de equipo")
+
+    id_qr = st.selectbox("Selecciona equipo", df["ID"])
+
+    if st.button("Generar QR"):
+
+        qr_img = generar_qr(id_qr, "https://proyectocrsj.streamlit.app")
+
+        st.image(qr_img, caption=f"QR para {id_qr}")
+
+        st.download_button(
+            "Descargar QR",
+            data=qr_img,
+            file_name=f"{id_qr}.png",
+            mime="image/png"
+        )
 # =============================
 # VISTA AGREGAR
 # =============================
@@ -423,6 +520,140 @@ elif menu == "Actualizar / Baja":
                 except Exception as e:
                     st.error(str(e))                    
                     
+# =============================
+# VISTA HISTORIAL
+# =============================
+
+elif menu == "Historial":
+
+    st.subheader("Historial de Equipos")
+
+    from services.historial import (
+        load_historial, save_historial,
+        agregar_historial, update_historial, delete_historial
+    )
+
+    historial_df = load_historial()
+
+    if df.empty:
+        st.warning("No hay equipos registrados.")
+    else:
+
+        if id_url and id_url in df["ID"].values:
+            id_equipo = id_url
+            st.success(f"Equipo cargado automáticamente: {id_equipo}")
+        else:
+            id_equipo = st.selectbox("Selecciona equipo", df["ID"])
+
+        historial_equipo = historial_df[
+            historial_df["ID_EQUIPO"] == id_equipo
+        ]
+
+        st.markdown("### Historial")
+
+        if historial_equipo.empty:
+            st.info("Este equipo no tiene historial.")
+        else:
+            st.dataframe(historial_equipo, use_container_width=True)
+
+        # =============================
+        # EDITAR / ELIMINAR
+        # =============================
+
+        if not historial_equipo.empty:
+
+            st.markdown("### ✏️ Editar / Eliminar registro")
+
+            id_registro = st.selectbox(
+                "Selecciona registro",
+                historial_equipo["ID_REGISTRO"]
+            )
+
+            registro = historial_df[
+                historial_df["ID_REGISTRO"] == id_registro
+            ].iloc[0]
+
+            with st.form("form_editar_historial"):
+
+                fecha = st.date_input("Fecha", value=registro["FECHA"])
+
+                tipo = st.selectbox(
+                    "Tipo",
+                    ["MANTENIMIENTO", "REPARACIÓN", "CAMBIO DE PIEZA", "FORMATEO"],
+                    index=["MANTENIMIENTO", "REPARACIÓN", "CAMBIO DE PIEZA", "FORMATEO"].index(registro["TIPO"])
+                )
+
+                descripcion = st.text_area("Descripción", value=registro["DESCRIPCION"])
+                tecnico = st.text_input("Técnico", value=registro["TECNICO"])
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    actualizar = st.form_submit_button("Actualizar")
+
+                with col2:
+                    eliminar = st.form_submit_button("Eliminar")
+
+                if actualizar:
+                    datos = {
+                        "FECHA": fecha,
+                        "TIPO": tipo,
+                        "DESCRIPCION": descripcion,
+                        "TECNICO": tecnico
+                    }
+
+                    historial_df = update_historial(historial_df, id_registro, datos)
+                    save_historial(historial_df)
+
+                    st.success("Registro actualizado")
+                    st.rerun()
+
+                if eliminar:
+                    historial_df = delete_historial(historial_df, id_registro)
+                    save_historial(historial_df)
+
+                    st.warning("Registro eliminado")
+                    st.rerun()
+
+        # =============================
+        # AGREGAR
+        # =============================
+
+        st.markdown("---")
+        st.markdown("### ➕ Agregar registro")
+
+        with st.form("form_historial"):
+
+            fecha = st.date_input("Fecha")
+
+            tipo = st.selectbox(
+                "Tipo",
+                ["MANTENIMIENTO", "REPARACIÓN", "CAMBIO DE PIEZA", "FORMATEO"]
+            )
+
+            descripcion = st.text_area("Descripción")
+            tecnico = st.selectbox(
+                "Tecnico", 
+                ["ANDRES MONTIEL", "CARLOS VERGARA", "JESUS OLIVERO"]
+                )
+
+            guardar = st.form_submit_button("Guardar")
+
+            if guardar:
+                datos = {
+                    "ID_EQUIPO": id_equipo,
+                    "FECHA": fecha,
+                    "TIPO": tipo,
+                    "DESCRIPCION": descripcion,
+                    "TECNICO": tecnico
+                }
+
+                historial_df = agregar_historial(historial_df, datos)
+                save_historial(historial_df)
+
+                st.success("Registro agregado")
+                st.rerun()
+
 # =============================
 # VISTA DASHBOARD
 # =============================
