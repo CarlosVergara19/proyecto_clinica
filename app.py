@@ -163,6 +163,66 @@ except Exception as e:
     st.error(str(e))
     st.stop()
 
+# =============================
+# MODO QR (VISTA DIRECTA)
+# =============================
+
+query_params = st.query_params
+
+if "id" in query_params:
+
+    id_qr = query_params["id"]
+
+    # ⚠️ IMPORTANTE: a veces viene como lista
+    if isinstance(id_qr, list):
+        id_qr = id_qr[0]
+
+    equipo_qr = df[df["ID"] == id_qr]
+
+    if equipo_qr.empty:
+        st.error("Equipo no encontrado")
+        st.stop()
+
+    equipo = equipo_qr.iloc[0]
+
+    st.title(f"💻 Equipo {equipo['ID']}")
+
+    st.markdown("### 📋 Información general")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write(f"**Categoría:** {equipo['CATEGORIA']}")
+        st.write(f"**Tipo:** {equipo['TIPO']}")
+        st.write(f"**Unidad Funcional:** {equipo['UNIDA FUNCIONAL']}")
+        st.write(f"**Usuario:** {equipo['USUARIO O CARGO']}")
+
+    with col2:
+        st.write(f"**Marca:** {equipo['MARCA']}")
+        st.write(f"**Modelo:** {equipo['MODELO']}")
+        st.write(f"**Procesador:** {equipo['PROCESADOR']}")
+        st.write(f"**RAM:** {equipo['MEMORIA RAM']}")
+        st.write(f"**Estado:** {equipo['ESTADO']}")
+
+    st.markdown("### 🛠 Historial del equipo")
+
+    try:
+        import pandas as pd
+        historial = pd.read_excel("data/historial.xlsx")
+
+        historial_equipo = historial[historial["ID"] == id_qr]
+
+        if historial_equipo.empty:
+            st.info("No hay historial registrado.")
+        else:
+            st.dataframe(historial_equipo, use_container_width=True)
+
+    except Exception as e:
+        st.warning("No se pudo cargar el historial.")
+
+    # 🚨 ESTO ES LO MÁS IMPORTANTE
+    st.stop()
+
 query_params = st.query_params
 
 id_url = query_params.get("id", None)
