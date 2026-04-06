@@ -208,7 +208,7 @@ if "id" in query_params:
 
     try:
         import pandas as pd
-        historial = pd.read_excel("data/historial.xlsx")
+        historial = pd.read_excel("data/historial_equipos.xlsx")
 
         historial_equipo = historial[historial["ID"] == id_qr]
 
@@ -218,7 +218,7 @@ if "id" in query_params:
             st.dataframe(historial_equipo, use_container_width=True)
 
     except Exception as e:
-        st.warning("No se pudo cargar el historial.")
+        st.error(f"Error cargando historial: {e}")
 
     # 🚨 ESTO ES LO MÁS IMPORTANTE
     st.stop()
