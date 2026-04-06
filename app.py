@@ -208,7 +208,7 @@ if "id" in query_params:
 
     try:
         import pandas as pd
-        
+
         historial = pd.read_excel("data/historial_equipos.xlsx")
 
         historial["ID_EQUIPO"] = historial["ID_EQUIPO"].astype(str).str.strip()
@@ -717,19 +717,49 @@ elif menu == "Historial":
 
                 st.success("Registro agregado")
                 st.rerun()
-
-# =============================
+   # =============================
 # VISTA DASHBOARD
 # =============================
 
 elif menu == "Dashboard":
 
-    st.subheader("📊 Dashboard de Inventario")
+    # 🎨 ESTILO POWER BI (SOLO DASHBOARD)
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] {
+        background-color: #0f172a;
+    }
+
+    h1, h2, h3, h4, h5, h6, p, label {
+        color: white !important;
+    }
+
+    .kpi-card {
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        background: linear-gradient(135deg, #1e293b, #334155);
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .kpi-title {
+        font-size: 14px;
+        color: #cbd5f5;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+        font-weight: bold;
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("## 📊 Dashboard de Inventario")
 
     if df.empty:
         st.warning("No hay datos para mostrar.")
     else:
-
         import plotly.express as px
 
         # =============================
@@ -740,63 +770,130 @@ elif menu == "Dashboard":
         mantenimiento = len(df[df["ESTADO"] == "MANTENIMIENTO"])
         baja = len(df[df["ESTADO"] == "BAJA"])
 
+        def kpi(valor, titulo):
+            return f"""
+            <div class="kpi-card">
+                <div class="kpi-title">{titulo}</div>
+                <div class="kpi-value">{valor}</div>
+            </div>
+            """
+
         col1, col2, col3, col4 = st.columns(4)
 
-        col1.metric("Total equipos", total)
-        col2.metric("Activos", activos)
-        col3.metric("Mantenimiento", mantenimiento)
-        col4.metric("Baja", baja)
+        col1.markdown(kpi(total, "Total equipos"), unsafe_allow_html=True)
+        col2.markdown(kpi(activos, "Activos"), unsafe_allow_html=True)
+        col3.markdown(kpi(mantenimiento, "Mantenimiento"), unsafe_allow_html=True)
+        col4.markdown(kpi(baja, "Baja"), unsafe_allow_html=True)
 
         st.markdown("---")
 
         # =============================
-        # GRÁFICO 1: ESTADO
+        # PREPARACIÓN DATOS
         # =============================
         estado_counts = df["ESTADO"].value_counts().reset_index()
         estado_counts.columns = ["Estado", "Cantidad"]
 
+        unidad_counts = df["UNIDA FUNCIONAL"].value_counts().reset_index()
+        unidad_counts.columns = ["Unidad", "Cantidad"]
+
+        marca_counts = df["MARCA"].value_counts().reset_index().head(10)
+        marca_counts.columns = ["Marca", "Cantidad"]
+
+        tipo_counts = df["TIPO"].value_counts().reset_index()
+        tipo_counts.columns = ["Tipo", "Cantidad"]
+
+        # =============================
+        # GRÁFICOS POWER BI
+        # =============================
         fig_estado = px.pie(
             estado_counts,
             names="Estado",
             values="Cantidad",
-            title="Distribución por Estado"
+            hole=0.5
+        )
+        fig_estado.update_layout(
+            template="plotly_dark",
+            title="Estado de Equipos"
         )
 
-        # =============================
-        # GRÁFICO 2: UBICACIÓN
-        # =============================
-        ubicacion_counts = df["UBICACION"].value_counts().reset_index()
-        ubicacion_counts.columns = ["Ubicación", "Cantidad"]
-
-        fig_ubicacion = px.bar(
-            ubicacion_counts,
-            x="Ubicación",
-            y="Cantidad",
-            title="Equipos por Ubicación"
+        fig_unidad = px.bar(
+            unidad_counts,
+            x="Unidad",
+            y="Cantidad"
         )
-
-        # =============================
-        # GRÁFICO 3: MARCAS (TOP 10)
-        # =============================
-        marca_counts = df["MARCA"].value_counts().reset_index().head(10)
-        marca_counts.columns = ["Marca", "Cantidad"]
+        fig_unidad.update_layout(
+            template="plotly_dark",
+            title="Equipos por Unidad"
+        )
 
         fig_marca = px.bar(
             marca_counts,
             x="Marca",
-            y="Cantidad",
-            title="Top 10 Marcas"
+            y="Cantidad"
+        )
+        fig_marca.update_layout(
+            template="plotly_dark",
+            title="Top Marcas"
+        )
+
+        fig_tipo = px.pie(
+            tipo_counts,
+            names="Tipo",
+            values="Cantidad"
+        )
+        fig_tipo.update_layout(
+            template="plotly_dark",
+            title="Tipos de Equipos"
         )
 
         # =============================
-        # MOSTRAR GRÁFICOS
+        # LAYOUT GRÁFICOS
         # =============================
         col1, col2 = st.columns(2)
 
         with col1:
             st.plotly_chart(fig_estado, use_container_width=True)
+            st.plotly_chart(fig_tipo, use_container_width=True)
 
         with col2:
-            st.plotly_chart(fig_ubicacion, use_container_width=True)
+            st.plotly_chart(fig_unidad, use_container_width=True)
+            st.plotly_chart(fig_marca, use_container_width=True)
 
-        st.plotly_chart(fig_marca, use_container_width=True)
+        # =============================
+        # EXPORTAR PDF (BÁSICO POR AHORA)
+        # =============================
+        st.markdown("### 📄 Exportar Dashboard")
+
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        import tempfile
+
+        def generar_pdf():
+            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            doc = SimpleDocTemplate(tmp_file.name)
+
+            styles = getSampleStyleSheet()
+            contenido = []
+
+            contenido.append(Paragraph("Reporte de Inventario - Clínica", styles["Title"]))
+            contenido.append(Spacer(1, 12))
+
+            contenido.append(Paragraph(f"Total equipos: {total}", styles["Normal"]))
+            contenido.append(Paragraph(f"Activos: {activos}", styles["Normal"]))
+            contenido.append(Paragraph(f"Mantenimiento: {mantenimiento}", styles["Normal"]))
+            contenido.append(Paragraph(f"Baja: {baja}", styles["Normal"]))
+
+            doc.build(contenido)
+
+            return tmp_file.name
+
+        if st.button("📥 Descargar PDF"):
+            pdf_path = generar_pdf()
+
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    "Descargar reporte",
+                    f,
+                    file_name="dashboard.pdf",
+                    mime="application/pdf"
+                )
