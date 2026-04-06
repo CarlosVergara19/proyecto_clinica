@@ -207,7 +207,8 @@ if "id" in query_params:
     st.markdown("### 🛠 Historial del equipo")
 
     try:
-
+        import pandas as pd
+        
         historial = pd.read_excel("data/historial_equipos.xlsx")
 
         historial["ID_EQUIPO"] = historial["ID_EQUIPO"].astype(str).str.strip()
