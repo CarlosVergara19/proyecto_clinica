@@ -207,10 +207,13 @@ if "id" in query_params:
     st.markdown("### 🛠 Historial del equipo")
 
     try:
-        import pandas as pd
+
         historial = pd.read_excel("data/historial_equipos.xlsx")
 
-        historial_equipo = historial[historial["ID"] == id_qr]
+        historial["ID_EQUIPO"] = historial["ID_EQUIPO"].astype(str).str.strip()
+        id_qr = str(id_qr).strip()
+
+        historial_equipo = historial[historial["ID_EQUIPO"] == id_qr]
 
         if historial_equipo.empty:
             st.info("No hay historial registrado.")
