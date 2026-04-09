@@ -206,6 +206,10 @@ if "id" in query_params:
 
     st.markdown("### 🛠 Historial del equipo")
 
+
+    
+    
+
     try:
         import pandas as pd
 
@@ -312,23 +316,71 @@ if menu == "Inventario":
         st.markdown(f"### Resultados: {len(df_filtrado)} equipo(s)")
         st.dataframe(df_filtrado, use_container_width=True)
 
+        st.markdown("---")
+        st.subheader("🔗 Acciones rápidas")
 
-        st.subheader("Generar QR de equipo")
-
-    id_qr = st.selectbox("Selecciona equipo", df["ID"])
-
-    if st.button("Generar QR"):
-
-        qr_img = generar_qr(id_qr, "https://proyectocrsj.streamlit.app")
-
-        st.image(qr_img, caption=f"QR para {id_qr}")
-
-        st.download_button(
-            "Descargar QR",
-            data=qr_img,
-            file_name=f"{id_qr}.png",
-            mime="image/png"
+        # =============================
+        # SELECCIONAR EQUIPO
+        # =============================
+        id_seleccionado = st.selectbox(
+            "Selecciona equipo",
+            df_filtrado["ID"]
         )
+
+        equipo = df_filtrado[df_filtrado["ID"] == id_seleccionado].iloc[0]
+
+        # =============================
+        # BOTÓN ANYDESK
+        # =============================
+        anydesk_raw = equipo.get("ANYDESK", "")
+
+        if str(anydesk_raw).endswith(".0"):
+            anydesk_id = str(int(float(anydesk_raw)))
+        else:
+            anydesk_id = str(anydesk_raw).strip()
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if anydesk_id and anydesk_id.lower() != "nan":
+                st.markdown(f"""
+                    <a href="anydesk:{anydesk_id}">
+                        <button style="
+                            background-color:#ff5722;
+                            color:white;
+                            padding:12px 20px;
+                            border:none;
+                            border-radius:10px;
+                            cursor:pointer;
+                            font-weight:bold;
+                            width:100%;
+                        ">
+                            🔗 Conectar AnyDesk ({anydesk_id})
+                        </button>
+                    </a>
+                """, unsafe_allow_html=True)
+                st.code(anydesk_id, language="text")
+            else:
+                st.warning("Este equipo no tiene AnyDesk")
+
+        # =============================
+        # QR
+        # =============================
+        with col2:
+            if st.button("📱 Generar QR", use_container_width=True):
+
+                qr_img = generar_qr(id_seleccionado, "https://proyectocrsj.streamlit.app")
+
+                st.image(qr_img, caption=f"QR para {id_seleccionado}")
+
+                st.download_button(
+                    "Descargar QR",
+                    data=qr_img,
+                    file_name=f"{id_seleccionado}.png",
+                    mime="image/png"
+                )
+
+        
 # =============================
 # VISTA AGREGAR
 # =============================
@@ -340,28 +392,45 @@ elif menu == "Agregar equipo":
     with st.form("form_nuevo_equipo", clear_on_submit=True):
 
         col1, col2 = st.columns(2)
+        
+        def generar_id(df):
+            if df.empty:
+                return "CRSJ001"
 
+            ids = df["ID"].dropna().astype(str)
+
+            numeros = []
+
+            for i in ids:
+                try:
+                    num = int(i.replace("CRSJ", ""))
+                    numeros.append(num)
+                except:
+                    continue
+
+            nuevo = max(numeros) + 1 if numeros else 1
+
+            return f"CRSJ{str(nuevo).zfill(3)}"
+        
+        
         with col1:
-            id_equipo = st.text_input("ID (ej: CRSJ003)")
+            id_generado = generar_id(df)
+            id_equipo = st.text_input("ID", value=id_generado, disabled=True)
             categoria = st.selectbox("Categoría", OPCIONES_CATEGORIA)
             ubicacion = st.selectbox("Ubicación", OPCIONES_UBICACION)
             tipo = st.selectbox("Tipo", OPCIONES_TIPO)
             unidad_funcional = st.selectbox("Unidad Funcional", OPCIONES_UNIDAD)
             usuario = st.text_input("Usuario o Cargo")
-            marca = st.text_input("Marca")
-            board = st.text_input("Board")
-            modelo = st.text_input("Modelo")
+            marca = st.selectbox("Marca", OPCIONES_MARCA)
             procesador = st.selectbox("Procesador", OPCIONES_PROCESADOR)
 
         with col2:
-            disco = st.text_input("Disco Duro")
             espacio = st.selectbox("Espacio", OPCIONES_ESPACIO)
             memoria = st.selectbox("Memoria RAM", OPCIONES_RAM)
             monitor = st.text_input("Monitor")
-            teclado = st.text_input("Teclado")
-            mouse = st.text_input("Mouse")
             nombre_equipo = st.text_input("Nombre de Equipo")
             estado = st.selectbox("Estado", OPCIONES_ESTADO)
+            anydesk = st.text_input("AnyDesk")
             fecha_fac = st.text_input("Fecha de Factura")
             factura = st.text_input("Nº Factura")
 
@@ -371,6 +440,27 @@ elif menu == "Agregar equipo":
 
         if submitted:
 
+            # 🔴 VALIDACIONES
+            if anydesk and not anydesk.isdigit():
+                st.error("El AnyDesk debe contener solo números")
+                st.stop()
+                
+            if id_equipo.strip() in df["ID"].astype(str).values:
+                st.error("Este ID ya existe, no puedes duplicarlo")
+                st.stop()
+
+            if not id_equipo.strip():
+                st.error("El ID es obligatorio")
+                st.stop()
+
+            if not usuario.strip():
+                st.error("El campo 'Usuario o Cargo' es obligatorio")
+                st.stop()
+
+            if not nombre_equipo.strip():
+                st.error("El campo 'Nombre de Equipo' es obligatorio")
+                st.stop()
+
             nuevo_equipo = {
                 "ID": id_equipo.strip(),
                 "CATEGORIA": categoria.strip(),
@@ -379,17 +469,13 @@ elif menu == "Agregar equipo":
                 "UNIDA FUNCIONAL": unidad_funcional.strip(),
                 "USUARIO O CARGO": usuario.strip(),
                 "MARCA": marca.strip(),
-                "BOARD": board.strip(),
-                "MODELO": modelo.strip(),
                 "PROCESADOR": procesador.strip(),
-                "DISCO DURO": disco.strip(),
                 "ESPACIO": espacio.strip(),
                 "MEMORIA RAM": memoria.strip(),
                 "MONITOR": monitor.strip(),
-                "TECLADO": teclado.strip(),
-                "MOUSE": mouse.strip(),
                 "NOMBRE DE EQUIPO": nombre_equipo.strip(),
                 "ESTADO": estado,
+                "ANYDESK": anydesk.strip(),
                 "FECHA DE FAC": fecha_fac.strip(),
                 "Nº FACTURA": factura.strip(),
                 "OBSERVACION": observacion.strip()
@@ -397,7 +483,6 @@ elif menu == "Agregar equipo":
 
             try:
                 import pandas as pd
-
                 df = pd.concat([df, pd.DataFrame([nuevo_equipo])], ignore_index=True)
                 save_data(df)
 
@@ -406,6 +491,7 @@ elif menu == "Agregar equipo":
 
             except Exception as e:
                 st.error(str(e))
+
 # =============================
 # VISTA ACTUALIZAR / BAJA
 # =============================
@@ -466,9 +552,6 @@ elif menu == "Actualizar / Baja":
                     if equipo["MARCA"] in OPCIONES_MARCA else 0
                 )
 
-                board = st.text_input("Board", value=equipo["BOARD"])
-                modelo = st.text_input("Modelo", value=equipo["MODELO"])
-
                 procesador = st.selectbox(
                     "Procesador",
                     OPCIONES_PROCESADOR,
@@ -477,7 +560,6 @@ elif menu == "Actualizar / Baja":
                 )
 
             with col2:
-                disco = st.text_input("Disco Duro", value=equipo["DISCO DURO"])
 
                 espacio = st.selectbox(
                     "Espacio",
@@ -494,8 +576,6 @@ elif menu == "Actualizar / Baja":
                 )
 
                 monitor = st.text_input("Monitor", value=equipo["MONITOR"])
-                teclado = st.text_input("Teclado", value=equipo["TECLADO"])
-                mouse = st.text_input("Mouse", value=equipo["MOUSE"])
                 nombre_equipo = st.text_input("Nombre de Equipo", value=equipo["NOMBRE DE EQUIPO"])
 
                 estado = st.selectbox(
@@ -509,32 +589,43 @@ elif menu == "Actualizar / Baja":
                 factura = st.text_input("Nº Factura", value=equipo["Nº FACTURA"])
 
             observacion = st.text_area("Observación", value=equipo["OBSERVACION"])
+            anydesk = st.text_input("AnyDesk", value=equipo["ANYDESK"])
 
+            if not usuario.strip():
+                st.error("El campo 'Usuario o Cargo' es obligatorio")
+                st.stop()
+
+            if not nombre_equipo.strip():
+                st.error("El campo 'Nombre de Equipo' es obligatorio")
+                st.stop()  
+
+            
+                
             submitted = st.form_submit_button("Guardar cambios")
+
+            if anydesk and not anydesk.isdigit():
+                st.error("El AnyDesk debe contener solo números")
+                st.stop() 
 
             if submitted:
 
                 datos_actualizados = {
-                    "CATEGORIA": categoria.strip(),
-                    "UBICACION": ubicacion.strip(),
-                    "TIPO": tipo.strip(),
-                    "UNIDA FUNCIONAL": unidad_funcional.strip(),
-                    "USUARIO O CARGO": usuario.strip(),
-                    "MARCA": marca.strip(),
-                    "BOARD": board.strip(),
-                    "MODELO": modelo.strip(),
-                    "PROCESADOR": procesador.strip(),
-                    "DISCO DURO": disco.strip(),
-                    "ESPACIO": espacio.strip(),
-                    "MEMORIA RAM": memoria.strip(),
-                    "MONITOR": monitor.strip(),
-                    "TECLADO": teclado.strip(),
-                    "MOUSE": mouse.strip(),
-                    "NOMBRE DE EQUIPO": nombre_equipo.strip(),
-                    "ESTADO": estado.strip(),
-                    "FECHA DE FAC": fecha_fac.strip(),
-                    "Nº FACTURA": factura.strip(),
-                    "OBSERVACION": observacion.strip()
+                "CATEGORIA": categoria.strip(),
+                "UBICACION": ubicacion.strip(),
+                "TIPO": tipo.strip(),
+                "UNIDA FUNCIONAL": unidad_funcional.strip(),
+                "USUARIO O CARGO": usuario.strip(),
+                "MARCA": marca.strip(),
+                "PROCESADOR": procesador.strip(),
+                "ESPACIO": espacio.strip(),
+                "MEMORIA RAM": memoria.strip(),
+                "MONITOR": monitor.strip(),
+                "NOMBRE DE EQUIPO": nombre_equipo.strip(),
+                "ESTADO": estado.strip(),
+                "ANYDESK": anydesk.strip(),
+                "FECHA DE FAC": fecha_fac.strip(),
+                "Nº FACTURA": factura.strip(),
+                "OBSERVACION": observacion.strip()
                 }
 
                 try:
@@ -860,40 +951,89 @@ elif menu == "Dashboard":
             st.plotly_chart(fig_marca, use_container_width=True)
 
         # =============================
-        # EXPORTAR PDF (BÁSICO POR AHORA)
+        # EXPORTAR PDF 
         # =============================
         st.markdown("### 📄 Exportar Dashboard")
 
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
         from reportlab.lib.styles import getSampleStyleSheet
         import tempfile
+        import plotly.io as pio
 
         def generar_pdf():
+
             tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
             doc = SimpleDocTemplate(tmp_file.name)
 
             styles = getSampleStyleSheet()
             contenido = []
 
-            contenido.append(Paragraph("Reporte de Inventario - Clínica", styles["Title"]))
+            # =============================
+            # TITULO
+            # =============================
+            contenido.append(Paragraph("📊 Dashboard de Inventario", styles["Title"]))
             contenido.append(Spacer(1, 12))
 
+            # =============================
+            # KPIs
+            # =============================
             contenido.append(Paragraph(f"Total equipos: {total}", styles["Normal"]))
             contenido.append(Paragraph(f"Activos: {activos}", styles["Normal"]))
             contenido.append(Paragraph(f"Mantenimiento: {mantenimiento}", styles["Normal"]))
             contenido.append(Paragraph(f"Baja: {baja}", styles["Normal"]))
 
+            contenido.append(Spacer(1, 20))
+
+            # =============================
+            # EXPORTAR GRÁFICOS COMO IMAGEN
+            # =============================
+
+            # 🔹 Estado
+            img_estado = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            pio.write_image(fig_estado, img_estado.name, width=600, height=400)
+
+            contenido.append(Paragraph("Distribución por Estado", styles["Heading2"]))
+            contenido.append(Image(img_estado.name, width=400, height=250))
+            contenido.append(Spacer(1, 20))
+
+            # 🔹 Unidad funcional
+            img_unidad = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            pio.write_image(fig_unidad, img_unidad.name, width=600, height=400)
+
+            contenido.append(Paragraph("Equipos por Unidad Funcional", styles["Heading2"]))
+            contenido.append(Image(img_unidad.name, width=400, height=250))
+            contenido.append(Spacer(1, 20))
+
+            # 🔹 Marca
+            img_marca = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            pio.write_image(fig_marca, img_marca.name, width=600, height=400)
+
+            contenido.append(Paragraph("Top Marcas", styles["Heading2"]))
+            contenido.append(Image(img_marca.name, width=400, height=250))
+            contenido.append(Spacer(1, 20))
+
+            # 🔹 Tipo
+            img_tipo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            pio.write_image(fig_tipo, img_tipo.name, width=600, height=400)
+
+            contenido.append(Paragraph("Equipos por Tipo", styles["Heading2"]))
+            contenido.append(Image(img_tipo.name, width=400, height=250))
+            contenido.append(Spacer(1, 20))
+
+            # =============================
+            # CONSTRUIR PDF
+            # =============================
             doc.build(contenido)
 
             return tmp_file.name
-
-        if st.button("📥 Descargar PDF"):
+        
+        if st.button("📥 Descargar Dashboard en PDF"):
             pdf_path = generar_pdf()
 
             with open(pdf_path, "rb") as f:
                 st.download_button(
-                    "Descargar reporte",
+                       "Descargar reporte completo",
                     f,
-                    file_name="dashboard.pdf",
+                    file_name="dashboard_clinica.pdf",
                     mime="application/pdf"
                 )
