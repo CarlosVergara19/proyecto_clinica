@@ -10,22 +10,17 @@ COLUMNAS_REQUERIDAS = [
     "UNIDA FUNCIONAL",
     "USUARIO O CARGO",
     "MARCA",
-    "BOARD",
-    "MODELO",
     "PROCESADOR",
-    "DISCO DURO",
     "ESPACIO",
     "MEMORIA RAM",
     "MONITOR",
-    "TECLADO",
-    "MOUSE",
     "NOMBRE DE EQUIPO",
     "ESTADO",
     "FECHA DE FAC",
     "Nº FACTURA",
-    "OBSERVACION"
+    "OBSERVACION",
+    "ANYDESK"
 ]
-
 
 def validar_columnas(df):
     """
