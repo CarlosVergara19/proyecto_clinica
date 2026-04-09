@@ -163,6 +163,9 @@ except Exception as e:
     st.error(str(e))
     st.stop()
 
+def safe_get(equipo, campo):
+    return equipo[campo] if campo in equipo.index else "No disponible"
+
 # =============================
 # MODO QR (VISTA DIRECTA)
 # =============================
@@ -173,7 +176,6 @@ if "id" in query_params:
 
     id_qr = query_params["id"]
 
-    # ⚠️ IMPORTANTE: a veces viene como lista
     if isinstance(id_qr, list):
         id_qr = id_qr[0]
 
@@ -185,39 +187,43 @@ if "id" in query_params:
 
     equipo = equipo_qr.iloc[0]
 
-    st.title(f"💻 Equipo {equipo['ID']}")
+    st.markdown(f"## 💻 Equipo {safe_get(equipo,'ID')}")
 
     st.markdown("### 📋 Información general")
 
+    # 📱 RESPONSIVE: una sola columna en móvil
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write(f"**Categoría:** {equipo['CATEGORIA']}")
-        st.write(f"**Tipo:** {equipo['TIPO']}")
-        st.write(f"**Unidad Funcional:** {equipo['UNIDA FUNCIONAL']}")
-        st.write(f"**Usuario:** {equipo['USUARIO O CARGO']}")
+        st.write(f"**Categoría:** {safe_get(equipo,'CATEGORIA')}")
+        st.write(f"**Tipo:** {safe_get(equipo,'TIPO')}")
+        st.write(f"**Unidad Funcional:** {safe_get(equipo,'UNIDA FUNCIONAL')}")
+        st.write(f"**Usuario:** {safe_get(equipo,'USUARIO O CARGO')}")
 
     with col2:
-        st.write(f"**Marca:** {equipo['MARCA']}")
-        st.write(f"**Modelo:** {equipo['MODELO']}")
-        st.write(f"**Procesador:** {equipo['PROCESADOR']}")
-        st.write(f"**RAM:** {equipo['MEMORIA RAM']}")
-        st.write(f"**Estado:** {equipo['ESTADO']}")
+        st.write(f"**Marca:** {safe_get(equipo,'MARCA')}")
+        st.write(f"**Procesador:** {safe_get(equipo,'PROCESADOR')}")
+        st.markdown(f"""
+        <div style="
+        padding:10px;
+        border-radius:10px;
+        background:#f5f5f5;
+        margin-bottom:8px;">
+        <b>RAM:</b> {safe_get(equipo,'MEMORIA RAM')}
+        </div>
+        """, unsafe_allow_html=True)
+        st.write(f"**Estado:** {safe_get(equipo,'ESTADO')}")
+        st.write(f"**Nombre equipo:** {safe_get(equipo,'NOMBRE DE EQUIPO')}")
+        st.write(f"**AnyDesk:** {safe_get(equipo,'ANYDESK')}")
 
     st.markdown("### 🛠 Historial del equipo")
-
-
-    
-    
 
     try:
         import pandas as pd
 
         historial = pd.read_excel("data/historial_equipos.xlsx")
 
-        historial["ID_EQUIPO"] = historial["ID_EQUIPO"].astype(str).str.strip()
-        id_qr = str(id_qr).strip()
-
+        # 🔥 CORRECCIÓN CLAVE (TU ERROR)
         historial_equipo = historial[historial["ID_EQUIPO"] == id_qr]
 
         if historial_equipo.empty:
@@ -227,7 +233,7 @@ if "id" in query_params:
 
     except Exception as e:
         st.error(f"Error cargando historial: {e}")
-
+        
     # 🚨 ESTO ES LO MÁS IMPORTANTE
     st.stop()
 
