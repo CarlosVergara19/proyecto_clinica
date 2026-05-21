@@ -6,6 +6,7 @@ FILE_PATH = "data/COMPUTADORES NEW.xlsx"
 def load_data():
     try:
         df = pd.read_excel(FILE_PATH)
+        dtype={"ANYDESK": str}
 
         # Limpiar nombres
         df.columns = df.columns.str.strip()
