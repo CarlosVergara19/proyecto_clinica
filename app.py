@@ -447,7 +447,7 @@ elif menu == "Agregar equipo":
         if submitted:
 
             # 🔴 VALIDACIONES
-            if anydesk and not anydesk.isdigit():
+            if anydesk.strip() and not anydesk.strip().isdigit():
                 st.error("El AnyDesk debe contener solo números")
                 st.stop()
                 
@@ -503,12 +503,17 @@ elif menu == "Agregar equipo":
 # =============================
 
 elif menu == "Actualizar / Baja":
+
     st.subheader("Editar equipo")
 
     if df.empty:
         st.warning("No hay registros disponibles.")
+
     else:
 
+        # =============================
+        # SELECCIONAR EQUIPO
+        # =============================
         id_seleccionado = st.selectbox(
             "Selecciona ID del equipo",
             df["ID"]
@@ -516,11 +521,26 @@ elif menu == "Actualizar / Baja":
 
         equipo = df[df["ID"] == id_seleccionado].iloc[0]
 
+        # =============================
+        # LIMPIAR ANYDESK
+        # =============================
+        anydesk_valor = str(equipo.get("ANYDESK", "")).strip()
+
+        if anydesk_valor.endswith(".0"):
+            anydesk_valor = anydesk_valor.replace(".0", "")
+
+        # =============================
+        # FORMULARIO
+        # =============================
         with st.form("form_editar_equipo"):
 
             col1, col2 = st.columns(2)
 
+            # =============================
+            # COLUMNA 1
+            # =============================
             with col1:
+
                 categoria = st.selectbox(
                     "Categoría",
                     OPCIONES_CATEGORIA,
@@ -549,7 +569,10 @@ elif menu == "Actualizar / Baja":
                     if equipo["UNIDA FUNCIONAL"] in OPCIONES_UNIDAD else 0
                 )
 
-                usuario = st.text_input("Usuario o Cargo", value=equipo["USUARIO O CARGO"])
+                usuario = st.text_input(
+                    "Usuario o Cargo",
+                    value=str(equipo["USUARIO O CARGO"])
+                )
 
                 marca = st.selectbox(
                     "Marca",
@@ -565,6 +588,9 @@ elif menu == "Actualizar / Baja":
                     if equipo["PROCESADOR"] in OPCIONES_PROCESADOR else 0
                 )
 
+            # =============================
+            # COLUMNA 2
+            # =============================
             with col2:
 
                 espacio = st.selectbox(
@@ -581,65 +607,109 @@ elif menu == "Actualizar / Baja":
                     if equipo["MEMORIA RAM"] in OPCIONES_RAM else 0
                 )
 
-                monitor = st.text_input("Monitor", value=equipo["MONITOR"])
-                nombre_equipo = st.text_input("Nombre de Equipo", value=equipo["NOMBRE DE EQUIPO"])
+                monitor = st.text_input(
+                    "Monitor",
+                    value=str(equipo["MONITOR"])
+                )
+
+                nombre_equipo = st.text_input(
+                    "Nombre de Equipo",
+                    value=str(equipo["NOMBRE DE EQUIPO"])
+                )
 
                 estado = st.selectbox(
                     "Estado",
-                    ["ACTIVO", "MANTENIMIENTO", "BAJA"],
-                    index=["ACTIVO", "MANTENIMIENTO", "BAJA"].index(equipo["ESTADO"])
-                    if equipo["ESTADO"] in ["ACTIVO", "MANTENIMIENTO", "BAJA"] else 0
+                    OPCIONES_ESTADO,
+                    index=OPCIONES_ESTADO.index(equipo["ESTADO"])
+                    if equipo["ESTADO"] in OPCIONES_ESTADO else 0
                 )
 
-                fecha_fac = st.text_input("Fecha de Factura", value=equipo["FECHA DE FAC"])
-                factura = st.text_input("Nº Factura", value=equipo["Nº FACTURA"])
+                anydesk = st.text_input(
+                    "AnyDesk",
+                    value=anydesk_valor
+                )
 
-            observacion = st.text_area("Observación", value=equipo["OBSERVACION"])
-            anydesk = st.text_input("AnyDesk", value=equipo["ANYDESK"])
+                fecha_fac = st.text_input(
+                    "Fecha de Factura",
+                    value=str(equipo["FECHA DE FAC"])
+                )
 
-            if not usuario.strip():
-                st.error("El campo 'Usuario o Cargo' es obligatorio")
-                st.stop()
+                factura = st.text_input(
+                    "Nº Factura",
+                    value=str(equipo["Nº FACTURA"])
+                )
 
-            if not nombre_equipo.strip():
-                st.error("El campo 'Nombre de Equipo' es obligatorio")
-                st.stop()  
+            # =============================
+            # OBSERVACIÓN
+            # =============================
+            observacion = st.text_area(
+                "Observación",
+                value=str(equipo["OBSERVACION"])
+            )
 
-            
-                
+            # =============================
+            # BOTÓN
+            # =============================
             submitted = st.form_submit_button("Guardar cambios")
 
-            if anydesk and not anydesk.isdigit():
-                st.error("El AnyDesk debe contener solo números")
-                st.stop() 
-
+            # =============================
+            # VALIDACIONES
+            # =============================
             if submitted:
 
+                # ✅ AnyDesk solo números
+                if anydesk.strip() and not anydesk.strip().isdigit():
+                    st.error("El AnyDesk debe contener solo números")
+                    st.stop()
+
+                # ✅ Campo obligatorio
+                if not usuario.strip():
+                    st.error("El campo 'Usuario o Cargo' es obligatorio")
+                    st.stop()
+
+                # ✅ Campo obligatorio
+                if not nombre_equipo.strip():
+                    st.error("El campo 'Nombre de Equipo' es obligatorio")
+                    st.stop()
+
+                # =============================
+                # DATOS ACTUALIZADOS
+                # =============================
                 datos_actualizados = {
-                "CATEGORIA": categoria.strip(),
-                "UBICACION": ubicacion.strip(),
-                "TIPO": tipo.strip(),
-                "UNIDA FUNCIONAL": unidad_funcional.strip(),
-                "USUARIO O CARGO": usuario.strip(),
-                "MARCA": marca.strip(),
-                "PROCESADOR": procesador.strip(),
-                "ESPACIO": espacio.strip(),
-                "MEMORIA RAM": memoria.strip(),
-                "MONITOR": monitor.strip(),
-                "NOMBRE DE EQUIPO": nombre_equipo.strip(),
-                "ESTADO": estado.strip(),
-                "ANYDESK": anydesk.strip(),
-                "FECHA DE FAC": fecha_fac.strip(),
-                "Nº FACTURA": factura.strip(),
-                "OBSERVACION": observacion.strip()
+
+                    "CATEGORIA": categoria.strip(),
+                    "UBICACION": ubicacion.strip(),
+                    "TIPO": tipo.strip(),
+                    "UNIDA FUNCIONAL": unidad_funcional.strip(),
+                    "USUARIO O CARGO": usuario.strip(),
+                    "MARCA": marca.strip(),
+                    "PROCESADOR": procesador.strip(),
+                    "ESPACIO": espacio.strip(),
+                    "MEMORIA RAM": memoria.strip(),
+                    "MONITOR": monitor.strip(),
+                    "NOMBRE DE EQUIPO": nombre_equipo.strip(),
+                    "ESTADO": estado.strip(),
+                    "ANYDESK": anydesk.strip(),
+                    "FECHA DE FAC": fecha_fac.strip(),
+                    "Nº FACTURA": factura.strip(),
+                    "OBSERVACION": observacion.strip()
                 }
 
                 try:
+
                     from services.crud import update_equipo
-                    df = update_equipo(df, id_seleccionado, datos_actualizados)
+
+                    df = update_equipo(
+                        df,
+                        id_seleccionado,
+                        datos_actualizados
+                    )
+
                     save_data(df)
+
                     st.success("Equipo actualizado correctamente")
                     st.rerun()
+
                 except Exception as e:
                     st.error(str(e))
 
@@ -652,32 +722,64 @@ elif menu == "Actualizar / Baja":
 
         col1, col2 = st.columns(2)
 
-        # 🔴 ELIMINAR DEFINITIVO
+        # =============================
+        # ELIMINAR
+        # =============================
         with col1:
-            confirmar = st.checkbox("Confirmar eliminación permanente")
 
-            if st.button("🗑️ Eliminar equipo", use_container_width=True):
+            confirmar = st.checkbox(
+                "Confirmar eliminación permanente"
+            )
+
+            if st.button(
+                "🗑️ Eliminar equipo",
+                use_container_width=True
+            ):
 
                 if not confirmar:
                     st.warning("Debes confirmar la eliminación")
+
                 else:
+
                     try:
+
                         from services.crud import delete_equipo
-                        df = delete_equipo(df, id_seleccionado)
+
+                        df = delete_equipo(
+                            df,
+                            id_seleccionado
+                        )
+
                         save_data(df)
+
                         st.success("Equipo eliminado correctamente")
                         st.rerun()
+
                     except Exception as e:
                         st.error(str(e))
 
-        # 🟡 MARCAR COMO BAJA
+        # =============================
+        # MARCAR BAJA
+        # =============================
         with col2:
-            if st.button("📉 Marcar como BAJA", use_container_width=True):
+
+            if st.button(
+                "📉 Marcar como BAJA",
+                use_container_width=True
+            ):
+
                 try:
-                    df.loc[df["ID"] == id_seleccionado, "ESTADO"] = "BAJA"
+
+                    df.loc[
+                        df["ID"] == id_seleccionado,
+                        "ESTADO"
+                    ] = "BAJA"
+
                     save_data(df)
+
                     st.success("Equipo marcado como BAJA")
                     st.rerun()
+
                 except Exception as e:
                     st.error(str(e))                    
                     
