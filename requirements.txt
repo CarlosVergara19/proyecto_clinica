@@ -1,0 +1,8 @@
+streamlit
+pandas
+openpyxl
+qrcode
+Pillow
+plotly
+reportlab
+kaleido
