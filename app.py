@@ -1,4 +1,5 @@
 import streamlit as st
+import io
 from services.data_loader import load_data, save_data
 from services.validations import validar_columnas
 from services.crud import create_equipo
@@ -146,18 +147,16 @@ with col2:
 
 OPCIONES_RAM = [
     "DDR3 4 GB",
+    "DDR3 6 GB",
     "DDR3 8 GB",
     "DDR4 4 GB",
     "DDR4 8 GB",
+    "DDR4 12 GB",
     "DDR4 16 GB",
-    "DDR5 16 GB"
 ]
 
 OPCIONES_ESTADO = ["ACTIVO", "MANTENIMIENTO", "BAJA"]
 
-OPCIONES_MARCA = [
-    "ASUS", "COMPUMAX", "GENERICO", "HP", "POWER", "JANUS", "DELL"
-]
 
 OPCIONES_PROCESADOR = [
     "INTEL CORE I3", "INTEL CORE I5", "INTEL CORE I7", "INTEL CORE I9", 
@@ -175,22 +174,17 @@ OPCIONES_ESPACIO = [
     "1 TB"
 ]
 
-OPCIONES_TIPO = ["ESCRITORIO", "PORTATIL"]
-
-OPCIONES_CATEGORIA = ["EQUIPO DE OFICINA"]
 
 OPCIONES_UBICACION = [
-    "ADMINISTRACION", "ADMISIONES", "ARCHIVO", "AUDITORIA",
-    "CALIDAD", "CALL CENTER", "CARTERA", "CONSULTA EXTERNA",
-    "CONSULTORIO 0", "CONSULTORIO 1", "CONSULTORIO 2", "CONSULTORIO 3",
+    "ADMINISTRACION", "AUTORIZACIONES", "ALA ROJA", "ALA ROSA-VERDE", "ALA AMARILLA" "ALA AZUL",
+    "ADMISIONES", "ARCHIVO", "AUDITORIA", "CALIDAD", "CALL CENTER", "CARTERA", 
+    "CONSULTA EXTERNA", "CONSULTORIO 0", "CONSULTORIO 1", "CONSULTORIO 2", "CONSULTORIO 3",
     "CONSULTORIO 4", "CONSULTORIO 5", "CONSULTORIO 6", "CONSULTORIO 7",
     "CONSULTORIO DE TRIAJE", "CONSULTORIO OBSTETRICO", "CONTABILIDAD",
     "CUARTO DE SANGRE", "DIRECCION CIENTIFICA", "FACTURACION", "FACTURACION 2DO PISO",
-    "FARMACIA", "GERENCIA", "HOSPITALIZACION 2DO PISO", "HUMALIB",
-    "LINEA DE FRENTE", "MANTENIMIENTO", "OBSERVACION 1", "OBSERVACION 2",
-    "OFICINA DE PANESSO", "PABELLON MATERNO", "REPARACION", "RX",
-    "SALA DE ESPERA", "SALA DE PROCEDIMIENTO", "SALA DE QUIROFANO 1", "SALA DE QUIROFANO 2",
-    "SIAU", "STAR DE ENFERMERIA", "TALENTO HUMANO", "TRANSITORIA"
+    "FARMACIA",  "SISTEMAS" ,"GERENCIA/SALA DE JUNTAS", "HOSPITALIZACION 2DO PISO", "HUMALIB",
+    "LINEA DE FRENTE", "OFICINA DE PANESSO", "PABELLON MATERNO", "RX",
+    "QUIROFANO", "SIAU", "SST", "STAND DE ENFERMERIA", "TALENTO HUMANO",
 ]
 
 OPCIONES_UNIDAD = [
@@ -238,20 +232,14 @@ if "id" in query_params:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write(f"**Categoría:** {safe_get(equipo,'CATEGORIA')}")
-        st.write(f"**Tipo:** {safe_get(equipo,'TIPO')}")
         st.write(f"**Unidad Funcional:** {safe_get(equipo,'UNIDA FUNCIONAL')}")
         st.write(f"**Usuario:** {safe_get(equipo,'USUARIO O CARGO')}")
+        st.write(f"**Ubicación:** {safe_get(equipo,'UBICACION')}")
 
     with col2:
-        st.write(f"**Marca:** {safe_get(equipo,'MARCA')}")
         st.write(f"**Procesador:** {safe_get(equipo,'PROCESADOR')}")
         st.markdown(f"""
-        <div style="
-        padding:10px;
-        border-radius:10px;
-        background:#f5f5f5;
-        margin-bottom:8px;">
+        <div style="padding:10px;border-radius:10px;background:#f5f5f5;margin-bottom:8px;">
         <b>RAM:</b> {safe_get(equipo,'MEMORIA RAM')}
         </div>
         """, unsafe_allow_html=True)
@@ -365,6 +353,16 @@ if menu == "Inventario":
         st.markdown(f"### Resultados: {len(df_filtrado)} equipo(s)")
         st.dataframe(df_filtrado, use_container_width=True)
 
+        buffer = io.BytesIO()
+        df_filtrado.to_excel(buffer, index=False, engine="openpyxl")
+        buffer.seek(0)
+        st.download_button(
+            label="📥 Descargar inventario en Excel",
+            data=buffer,
+            file_name="inventario_clinica.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
         st.markdown("---")
         st.subheader("🔗 Acciones rápidas")
 
@@ -465,12 +463,9 @@ elif menu == "Agregar equipo":
         with col1:
             id_generado = generar_id(df)
             id_equipo = st.text_input("ID", value=id_generado, disabled=True)
-            categoria = st.selectbox("Categoría", OPCIONES_CATEGORIA)
             ubicacion = st.selectbox("Ubicación", OPCIONES_UBICACION)
-            tipo = st.selectbox("Tipo", OPCIONES_TIPO)
             unidad_funcional = st.selectbox("Unidad Funcional", OPCIONES_UNIDAD)
             usuario = st.text_input("Usuario o Cargo")
-            marca = st.selectbox("Marca", OPCIONES_MARCA)
             procesador = st.selectbox("Procesador", OPCIONES_PROCESADOR)
 
         with col2:
@@ -480,8 +475,6 @@ elif menu == "Agregar equipo":
             nombre_equipo = st.text_input("Nombre de Equipo")
             estado = st.selectbox("Estado", OPCIONES_ESTADO)
             anydesk = st.text_input("AnyDesk")
-            fecha_fac = st.text_input("Fecha de Factura")
-            factura = st.text_input("Nº Factura")
 
         observacion = st.text_area("Observación")
 
@@ -512,12 +505,9 @@ elif menu == "Agregar equipo":
 
             nuevo_equipo = {
                 "ID": id_equipo.strip(),
-                "CATEGORIA": categoria.strip(),
                 "UBICACION": ubicacion.strip(),
-                "TIPO": tipo.strip(),
                 "UNIDA FUNCIONAL": unidad_funcional.strip(),
                 "USUARIO O CARGO": usuario.strip(),
-                "MARCA": marca.strip(),
                 "PROCESADOR": procesador.strip(),
                 "ESPACIO": espacio.strip(),
                 "MEMORIA RAM": memoria.strip(),
@@ -525,8 +515,6 @@ elif menu == "Agregar equipo":
                 "NOMBRE DE EQUIPO": nombre_equipo.strip(),
                 "ESTADO": estado,
                 "ANYDESK": anydesk.strip(),
-                "FECHA DE FAC": fecha_fac.strip(),
-                "Nº FACTURA": factura.strip(),
                 "OBSERVACION": observacion.strip()
             }
 
@@ -538,12 +526,9 @@ elif menu == "Agregar equipo":
 
                 registro_supabase = {
                     "id":               nuevo_equipo["ID"],
-                    "categoria":        nuevo_equipo["CATEGORIA"],
                     "ubicacion":        nuevo_equipo["UBICACION"],
-                    "tipo":             nuevo_equipo["TIPO"],
                     "unidad_funcional": nuevo_equipo["UNIDA FUNCIONAL"],
                     "usuario_cargo":    nuevo_equipo["USUARIO O CARGO"],
-                    "marca":            nuevo_equipo["MARCA"],
                     "procesador":       nuevo_equipo["PROCESADOR"],
                     "espacio":          nuevo_equipo["ESPACIO"],
                     "memoria_ram":      nuevo_equipo["MEMORIA RAM"],
@@ -551,8 +536,6 @@ elif menu == "Agregar equipo":
                     "nombre_equipo":    nuevo_equipo["NOMBRE DE EQUIPO"],
                     "estado":           nuevo_equipo["ESTADO"],
                     "anydesk":          nuevo_equipo["ANYDESK"],
-                    "fecha_factura":    nuevo_equipo["FECHA DE FAC"],
-                    "num_factura":      nuevo_equipo["Nº FACTURA"],
                     "observacion":      nuevo_equipo["OBSERVACION"],
                 }
 
@@ -607,25 +590,11 @@ elif menu == "Actualizar / Baja":
             # =============================
             with col1:
 
-                categoria = st.selectbox(
-                    "Categoría",
-                    OPCIONES_CATEGORIA,
-                    index=OPCIONES_CATEGORIA.index(equipo["CATEGORIA"])
-                    if equipo["CATEGORIA"] in OPCIONES_CATEGORIA else 0
-                )
-
                 ubicacion = st.selectbox(
                     "Ubicación",
                     OPCIONES_UBICACION,
                     index=OPCIONES_UBICACION.index(equipo["UBICACION"])
                     if equipo["UBICACION"] in OPCIONES_UBICACION else 0
-                )
-
-                tipo = st.selectbox(
-                    "Tipo",
-                    OPCIONES_TIPO,
-                    index=OPCIONES_TIPO.index(equipo["TIPO"])
-                    if equipo["TIPO"] in OPCIONES_TIPO else 0
                 )
 
                 unidad_funcional = st.selectbox(
@@ -638,13 +607,6 @@ elif menu == "Actualizar / Baja":
                 usuario = st.text_input(
                     "Usuario o Cargo",
                     value=str(equipo["USUARIO O CARGO"])
-                )
-
-                marca = st.selectbox(
-                    "Marca",
-                    OPCIONES_MARCA,
-                    index=OPCIONES_MARCA.index(equipo["MARCA"])
-                    if equipo["MARCA"] in OPCIONES_MARCA else 0
                 )
 
                 procesador = st.selectbox(
@@ -695,16 +657,6 @@ elif menu == "Actualizar / Baja":
                     value=anydesk_valor
                 )
 
-                fecha_fac = st.text_input(
-                    "Fecha de Factura",
-                    value=str(equipo["FECHA DE FAC"])
-                )
-
-                factura = st.text_input(
-                    "Nº Factura",
-                    value=str(equipo["Nº FACTURA"])
-                )
-
             # =============================
             # OBSERVACIÓN
             # =============================
@@ -743,12 +695,9 @@ elif menu == "Actualizar / Baja":
                 # =============================
                 datos_actualizados = {
 
-                    "CATEGORIA": categoria.strip(),
                     "UBICACION": ubicacion.strip(),
-                    "TIPO": tipo.strip(),
                     "UNIDA FUNCIONAL": unidad_funcional.strip(),
                     "USUARIO O CARGO": usuario.strip(),
-                    "MARCA": marca.strip(),
                     "PROCESADOR": procesador.strip(),
                     "ESPACIO": espacio.strip(),
                     "MEMORIA RAM": memoria.strip(),
@@ -756,8 +705,6 @@ elif menu == "Actualizar / Baja":
                     "NOMBRE DE EQUIPO": nombre_equipo.strip(),
                     "ESTADO": estado.strip(),
                     "ANYDESK": anydesk.strip(),
-                    "FECHA DE FAC": fecha_fac.strip(),
-                    "Nº FACTURA": factura.strip(),
                     "OBSERVACION": observacion.strip()
                 }
 

@@ -21,12 +21,9 @@ def load_data():
     # Renombrar columnas Supabase → nombres que usa app.py
     df = df.rename(columns={
         "id":               "ID",
-        "categoria":        "CATEGORIA",
         "ubicacion":        "UBICACION",
-        "tipo":             "TIPO",
         "unidad_funcional": "UNIDA FUNCIONAL",
         "usuario_cargo":    "USUARIO O CARGO",
-        "marca":            "MARCA",
         "procesador":       "PROCESADOR",
         "espacio":          "ESPACIO",
         "memoria_ram":      "MEMORIA RAM",
@@ -34,8 +31,6 @@ def load_data():
         "nombre_equipo":    "NOMBRE DE EQUIPO",
         "estado":           "ESTADO",
         "anydesk":          "ANYDESK",
-        "fecha_factura":    "FECHA DE FAC",
-        "num_factura":      "Nº FACTURA",
         "observacion":      "OBSERVACION",
     })
 

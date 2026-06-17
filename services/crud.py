@@ -17,12 +17,9 @@ def update_equipo(df, id_equipo, datos_actualizados):
 
     # Mapear nombres app.py → columnas Supabase
     mapeo = {
-        "CATEGORIA":        "categoria",
         "UBICACION":        "ubicacion",
-        "TIPO":             "tipo",
         "UNIDA FUNCIONAL":  "unidad_funcional",
         "USUARIO O CARGO":  "usuario_cargo",
-        "MARCA":            "marca",
         "PROCESADOR":       "procesador",
         "ESPACIO":          "espacio",
         "MEMORIA RAM":      "memoria_ram",
@@ -30,8 +27,6 @@ def update_equipo(df, id_equipo, datos_actualizados):
         "NOMBRE DE EQUIPO": "nombre_equipo",
         "ESTADO":           "estado",
         "ANYDESK":          "anydesk",
-        "FECHA DE FAC":     "fecha_factura",
-        "Nº FACTURA":       "num_factura",
         "OBSERVACION":      "observacion",
     }
 
@@ -52,6 +47,9 @@ def update_equipo(df, id_equipo, datos_actualizados):
 # ── Eliminar equipo ───────────────────────────────────
 def delete_equipo(df, id_equipo):
     supabase = get_supabase()
+    # Primero borrar historial del equipo
+    supabase.table("historial").delete().eq("id_equipo", id_equipo).execute()
+    # Luego borrar el equipo
     supabase.table("equipos").delete().eq("id", id_equipo).execute()
     df = df[df["ID"] != id_equipo]
     return df
