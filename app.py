@@ -46,7 +46,6 @@ def check_login():
 
         st.stop()
 
-check_login()
 
 st.set_page_config(
     page_title="Sistema Inventario Clínica",
@@ -225,10 +224,8 @@ if "id" in query_params:
     equipo = equipo_qr.iloc[0]
 
     st.markdown(f"## 💻 Equipo {safe_get(equipo,'ID')}")
-
     st.markdown("### 📋 Información general")
 
-    # 📱 RESPONSIVE: una sola columna en móvil
     col1, col2 = st.columns(2)
 
     with col1:
@@ -248,6 +245,25 @@ if "id" in query_params:
         st.write(f"**AnyDesk:** {safe_get(equipo,'ANYDESK')}")
 
     st.markdown("### 🛠 Historial del equipo")
+
+    try:
+        from services.historial import load_historial
+        historial = load_historial()
+        historial_equipo = historial[historial["ID_EQUIPO"] == id_qr]
+
+        if historial_equipo.empty:
+            st.info("No hay historial registrado.")
+        else:
+            st.dataframe(historial_equipo, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error cargando historial: {e}")
+
+    st.stop()
+
+# ── A partir de aquí sí se requiere login ─────────────
+    check_login()
+
 
     try:
         import pandas as pd
@@ -311,20 +327,12 @@ if menu == "Inventario":
 
             with col3:
                 marcas = st.multiselect(
-                    "Marca",
-                    options=sorted(df["MARCA"].dropna().unique())
-                )
-
-            col4, col5 = st.columns(2)
-
-            with col4:
-                rams = st.multiselect(
                     "Memoria RAM",
                     options=sorted(df["MEMORIA RAM"].dropna().unique())
                 )
 
-            with col5:
-                busqueda = st.text_input("Buscar (modelo o nombre)").strip().lower()
+            
+            busqueda = st.text_input("Buscar (nombre de equipo o usuario)").strip().lower()
 
             aplicar = st.form_submit_button("Aplicar filtros")
 
@@ -337,9 +345,6 @@ if menu == "Inventario":
 
             if unidades:
                 df_filtrado = df_filtrado[df_filtrado["UNIDA FUNCIONAL"].isin(unidades)]
-
-            if marcas:
-                df_filtrado = df_filtrado[df_filtrado["MARCA"].isin(marcas)]
 
             if rams:
                 df_filtrado = df_filtrado[df_filtrado["MEMORIA RAM"].isin(rams)]
@@ -1006,55 +1011,34 @@ elif menu == "Dashboard":
         unidad_counts = df["UNIDA FUNCIONAL"].value_counts().reset_index()
         unidad_counts.columns = ["Unidad", "Cantidad"]
 
-        marca_counts = df["MARCA"].value_counts().reset_index().head(10)
-        marca_counts.columns = ["Marca", "Cantidad"]
+        procesador_counts = df["PROCESADOR"].value_counts().reset_index().head(10)
+        procesador_counts.columns = ["Procesador", "Cantidad"]
 
-        tipo_counts = df["TIPO"].value_counts().reset_index()
-        tipo_counts.columns = ["Tipo", "Cantidad"]
+        ram_counts = df["MEMORIA RAM"].value_counts().reset_index()
+        ram_counts.columns = ["RAM", "Cantidad"]
 
         # =============================
-        # GRÁFICOS POWER BI
+        # GRÁFICOS
         # =============================
         fig_estado = px.pie(
-            estado_counts,
-            names="Estado",
-            values="Cantidad",
-            hole=0.5
+            estado_counts, names="Estado", values="Cantidad", hole=0.5
         )
-        fig_estado.update_layout(
-            template="plotly_dark",
-            title="Estado de Equipos"
-        )
+        fig_estado.update_layout(template="plotly_dark", title="Estado de Equipos")
 
         fig_unidad = px.bar(
-            unidad_counts,
-            x="Unidad",
-            y="Cantidad"
+            unidad_counts, x="Unidad", y="Cantidad"
         )
-        fig_unidad.update_layout(
-            template="plotly_dark",
-            title="Equipos por Unidad"
-        )
+        fig_unidad.update_layout(template="plotly_dark", title="Equipos por Unidad")
 
-        fig_marca = px.bar(
-            marca_counts,
-            x="Marca",
-            y="Cantidad"
+        fig_procesador = px.bar(
+            procesador_counts, x="Procesador", y="Cantidad"
         )
-        fig_marca.update_layout(
-            template="plotly_dark",
-            title="Top Marcas"
-        )
+        fig_procesador.update_layout(template="plotly_dark", title="Top Procesadores")
 
-        fig_tipo = px.pie(
-            tipo_counts,
-            names="Tipo",
-            values="Cantidad"
+        fig_ram = px.pie(
+            ram_counts, names="RAM", values="Cantidad"
         )
-        fig_tipo.update_layout(
-            template="plotly_dark",
-            title="Tipos de Equipos"
-        )
+        fig_ram.update_layout(template="plotly_dark", title="Distribución RAM")
 
         # =============================
         # LAYOUT GRÁFICOS
@@ -1063,11 +1047,11 @@ elif menu == "Dashboard":
 
         with col1:
             st.plotly_chart(fig_estado, use_container_width=True)
-            st.plotly_chart(fig_tipo, use_container_width=True)
+            st.plotly_chart(fig_ram, use_container_width=True)
 
         with col2:
             st.plotly_chart(fig_unidad, use_container_width=True)
-            st.plotly_chart(fig_marca, use_container_width=True)
+            st.plotly_chart(fig_procesador, use_container_width=True)
 
         # =============================
         # EXPORTAR PDF 
@@ -1110,7 +1094,6 @@ elif menu == "Dashboard":
             # 🔹 Estado
             img_estado = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
             pio.write_image(fig_estado, img_estado.name, width=600, height=400)
-
             contenido.append(Paragraph("Distribución por Estado", styles["Heading2"]))
             contenido.append(Image(img_estado.name, width=400, height=250))
             contenido.append(Spacer(1, 20))
@@ -1118,25 +1101,22 @@ elif menu == "Dashboard":
             # 🔹 Unidad funcional
             img_unidad = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
             pio.write_image(fig_unidad, img_unidad.name, width=600, height=400)
-
             contenido.append(Paragraph("Equipos por Unidad Funcional", styles["Heading2"]))
             contenido.append(Image(img_unidad.name, width=400, height=250))
             contenido.append(Spacer(1, 20))
 
-            # 🔹 Marca
-            img_marca = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pio.write_image(fig_marca, img_marca.name, width=600, height=400)
-
-            contenido.append(Paragraph("Top Marcas", styles["Heading2"]))
-            contenido.append(Image(img_marca.name, width=400, height=250))
+            # 🔹 Procesadores
+            img_procesador = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            pio.write_image(fig_procesador, img_procesador.name, width=600, height=400)
+            contenido.append(Paragraph("Top Procesadores", styles["Heading2"]))
+            contenido.append(Image(img_procesador.name, width=400, height=250))
             contenido.append(Spacer(1, 20))
 
-            # 🔹 Tipo
-            img_tipo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pio.write_image(fig_tipo, img_tipo.name, width=600, height=400)
-
-            contenido.append(Paragraph("Equipos por Tipo", styles["Heading2"]))
-            contenido.append(Image(img_tipo.name, width=400, height=250))
+            # 🔹 RAM
+            img_ram = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            pio.write_image(fig_ram, img_ram.name, width=600, height=400)
+            contenido.append(Paragraph("Distribución RAM", styles["Heading2"]))
+            contenido.append(Image(img_ram.name, width=400, height=250))
             contenido.append(Spacer(1, 20))
 
             # =============================
