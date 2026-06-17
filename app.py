@@ -262,29 +262,7 @@ if "id" in query_params:
     st.stop()
 
 # ── A partir de aquí sí se requiere login ─────────────
-    check_login()
-
-
-    try:
-        import pandas as pd
-
-        historial = pd.read_excel("data/historial_equipos.xlsx")
-
-        # 🔥 CORRECCIÓN CLAVE (TU ERROR)
-        historial_equipo = historial[historial["ID_EQUIPO"] == id_qr]
-
-        if historial_equipo.empty:
-            st.info("No hay historial registrado.")
-        else:
-            st.dataframe(historial_equipo, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Error cargando historial: {e}")
-        
-    # 🚨 ESTO ES LO MÁS IMPORTANTE
-    st.stop()
-
-query_params = st.query_params
+check_login()
 
 id_url = query_params.get("id", None)
 
