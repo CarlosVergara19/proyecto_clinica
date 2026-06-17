@@ -531,9 +531,32 @@ elif menu == "Agregar equipo":
             }
 
             try:
+                from services.data_loader import get_supabase
                 import pandas as pd
-                df = pd.concat([df, pd.DataFrame([nuevo_equipo])], ignore_index=True)
-                save_data(df)
+
+                supabase = get_supabase()
+
+                registro_supabase = {
+                    "id":               nuevo_equipo["ID"],
+                    "categoria":        nuevo_equipo["CATEGORIA"],
+                    "ubicacion":        nuevo_equipo["UBICACION"],
+                    "tipo":             nuevo_equipo["TIPO"],
+                    "unidad_funcional": nuevo_equipo["UNIDA FUNCIONAL"],
+                    "usuario_cargo":    nuevo_equipo["USUARIO O CARGO"],
+                    "marca":            nuevo_equipo["MARCA"],
+                    "procesador":       nuevo_equipo["PROCESADOR"],
+                    "espacio":          nuevo_equipo["ESPACIO"],
+                    "memoria_ram":      nuevo_equipo["MEMORIA RAM"],
+                    "monitor":          nuevo_equipo["MONITOR"],
+                    "nombre_equipo":    nuevo_equipo["NOMBRE DE EQUIPO"],
+                    "estado":           nuevo_equipo["ESTADO"],
+                    "anydesk":          nuevo_equipo["ANYDESK"],
+                    "fecha_factura":    nuevo_equipo["FECHA DE FAC"],
+                    "num_factura":      nuevo_equipo["Nº FACTURA"],
+                    "observacion":      nuevo_equipo["OBSERVACION"],
+                }
+
+                supabase.table("equipos").insert(registro_supabase).execute()
 
                 st.success("Equipo agregado correctamente")
                 st.rerun()
@@ -813,12 +836,10 @@ elif menu == "Actualizar / Baja":
 
                 try:
 
-                    df.loc[
-                        df["ID"] == id_seleccionado,
-                        "ESTADO"
-                    ] = "BAJA"
-
-                    save_data(df)
+                    from services.data_loader import get_supabase
+                    supabase = get_supabase()
+                    supabase.table("equipos").update({"estado": "BAJA"}).eq("id", id_seleccionado).execute()
+                    df.loc[df["ID"] == id_seleccionado, "ESTADO"] = "BAJA"
 
                     st.success("Equipo marcado como BAJA")
                     st.rerun()

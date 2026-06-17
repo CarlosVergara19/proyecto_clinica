@@ -1,77 +1,57 @@
-import pandas as pd
-from datetime import datetime
-from services.validations import (validar_campos_obligatorios)
+from supabase import create_client
+import streamlit as st
 
+def get_supabase():
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
 
-def generar_nuevo_id(df):
-    """
-    Genera un ID incremental automático.
-    """
-    if df.empty:
-        return 1
-
-    return int(df["id"].max()) + 1
-
-
+# ── Crear equipo ──────────────────────────────────────
 def create_equipo(df, datos):
-    """
-    Agrega un nuevo equipo al inventario con validaciones completas.
-    """
+    # No se usa desde app.py (app.py maneja esto directo)
+    pass
 
-    # ===============================
-    # VALIDACIONES
-    # ===============================
+# ── Actualizar equipo ─────────────────────────────────
+def update_equipo(df, id_equipo, datos_actualizados):
+    supabase = get_supabase()
 
-    validar_campos_obligatorios(datos)
-
-    # ===============================
-    # GENERAR ID
-    # ===============================
-
-    nuevo_id = generar_nuevo_id(df)
-
-    # ===============================
-    # CREAR REGISTRO
-    # ===============================
-
-    nuevo_equipo = {
-        "id": nuevo_id,
-        "nombre": datos["nombre"].strip(),
-        "marca": datos["marca"].strip(),
-        "modelo": datos["modelo"].strip(),
-        "procesador": datos.get("procesador", "").strip(),
-        "ram": datos.get("ram", "").upper().strip(),
-        "disco": datos.get("disco", "").strip(),
-        "ubicacion": datos["ubicacion"].strip(),
-        "estado": datos["estado"],
-        "fecha_ingreso": datetime.now().date(),
-        "fecha_baja": None,
-        "responsable": datos.get("responsable", "").strip(),
-        "serial": datos.get("serial", "").strip()
+    # Mapear nombres app.py → columnas Supabase
+    mapeo = {
+        "CATEGORIA":        "categoria",
+        "UBICACION":        "ubicacion",
+        "TIPO":             "tipo",
+        "UNIDA FUNCIONAL":  "unidad_funcional",
+        "USUARIO O CARGO":  "usuario_cargo",
+        "MARCA":            "marca",
+        "PROCESADOR":       "procesador",
+        "ESPACIO":          "espacio",
+        "MEMORIA RAM":      "memoria_ram",
+        "MONITOR":          "monitor",
+        "NOMBRE DE EQUIPO": "nombre_equipo",
+        "ESTADO":           "estado",
+        "ANYDESK":          "anydesk",
+        "FECHA DE FAC":     "fecha_factura",
+        "Nº FACTURA":       "num_factura",
+        "OBSERVACION":      "observacion",
     }
 
-    # ===============================
-    # AGREGAR AL DATAFRAME
-    # ===============================
+    datos_supabase = {
+        mapeo[k]: v
+        for k, v in datos_actualizados.items()
+        if k in mapeo
+    }
 
-    df = pd.concat([df, pd.DataFrame([nuevo_equipo])], ignore_index=True)
+    supabase.table("equipos").update(datos_supabase).eq("id", id_equipo).execute()
 
-    return df
-
-def update_equipo(df, id_equipo, datos_actualizados):
-
-    if id_equipo not in df["ID"].values:
-        raise ValueError("El equipo no existe.")
-
+    # Actualizar también el DataFrame local para que st.rerun() refleje el cambio
     for campo, valor in datos_actualizados.items():
         df.loc[df["ID"] == id_equipo, campo] = valor
 
     return df
 
+# ── Eliminar equipo ───────────────────────────────────
 def delete_equipo(df, id_equipo):
-    if id_equipo not in df["ID"].values:
-        raise ValueError("El equipo no existe.")
-
+    supabase = get_supabase()
+    supabase.table("equipos").delete().eq("id", id_equipo).execute()
     df = df[df["ID"] != id_equipo]
-
     return df

@@ -1,50 +1,68 @@
 import pandas as pd
-from datetime import datetime
+from supabase import create_client
+import streamlit as st
 
-FILE_PATH = "data/historial_equipos.xlsx"
-
+def get_supabase():
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
 
 def load_historial():
-    try:
-        df = pd.read_excel(FILE_PATH)
-        df.columns = df.columns.str.strip()
-        return df
-    except:
+    supabase = get_supabase()
+    response = supabase.table("historial").select("*").execute()
+    df = pd.DataFrame(response.data)
+
+    if df.empty:
         return pd.DataFrame(columns=[
             "ID_REGISTRO", "ID_EQUIPO", "FECHA", "TIPO", "DESCRIPCION", "TECNICO"
         ])
 
+    df = df.rename(columns={
+        "id_registro": "ID_REGISTRO",
+        "id_equipo":   "ID_EQUIPO",
+        "fecha":       "FECHA",
+        "tipo":        "TIPO",
+        "descripcion": "DESCRIPCION",
+        "tecnico":     "TECNICO",
+    })
+
+    return df
 
 def save_historial(df):
-    df.to_excel(FILE_PATH, index=False)
-
-
-def generar_id(df):
-    if df.empty:
-        return 1
-    return int(df["ID_REGISTRO"].max()) + 1
-
+    # Ya no se usa — las operaciones van directo a Supabase
+    pass
 
 def agregar_historial(df, datos):
+    supabase = get_supabase()
+
     nuevo = {
-        "ID_REGISTRO": generar_id(df),
-        "ID_EQUIPO": datos["ID_EQUIPO"],
-        "FECHA": datos["FECHA"],
-        "TIPO": datos["TIPO"],
-        "DESCRIPCION": datos["DESCRIPCION"],
-        "TECNICO": datos["TECNICO"]
+        "id_equipo":   datos["ID_EQUIPO"],
+        "fecha":       str(datos["FECHA"]),
+        "tipo":        datos["TIPO"],
+        "descripcion": datos["DESCRIPCION"],
+        "tecnico":     datos["TECNICO"],
     }
 
-    df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
-    return df
+    supabase.table("historial").insert(nuevo).execute()
 
+    # Recargar historial actualizado
+    return load_historial()
 
 def update_historial(df, id_registro, datos):
-    for campo, valor in datos.items():
-        df.loc[df["ID_REGISTRO"] == id_registro, campo] = valor
-    return df
+    supabase = get_supabase()
 
+    datos_supabase = {
+        "fecha":       str(datos["FECHA"]),
+        "tipo":        datos["TIPO"],
+        "descripcion": datos["DESCRIPCION"],
+        "tecnico":     datos["TECNICO"],
+    }
+
+    supabase.table("historial").update(datos_supabase).eq("id_registro", id_registro).execute()
+
+    return load_historial()
 
 def delete_historial(df, id_registro):
-    df = df[df["ID_REGISTRO"] != id_registro]
-    return df
+    supabase = get_supabase()
+    supabase.table("historial").delete().eq("id_registro", id_registro).execute()
+    return load_historial()

@@ -1,43 +1,46 @@
 import pandas as pd
-from services.validations import validar_columnas
+from supabase import create_client
+import streamlit as st
 
-FILE_PATH = "data/COMPUTADORES NEW.xlsx"
+# ── Conexión ──────────────────────────────────────────
+@st.cache_resource
+def get_supabase():
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
 
+# ── Cargar equipos ────────────────────────────────────
 def load_data():
-    try:
+    supabase = get_supabase()
+    response = supabase.table("equipos").select("*").execute()
+    df = pd.DataFrame(response.data)
 
-        # ✅ LEER EXCEL FORZANDO ANYDESK COMO TEXTO
-        df = pd.read_excel(
-            FILE_PATH,
-            dtype={"ANYDESK": str}
-        )
-
-        # ✅ Limpiar nombres columnas
-        df.columns = df.columns.str.strip()
-
-        # ✅ Limpiar ANYDESK
-        if "ANYDESK" in df.columns:
-
-            df["ANYDESK"] = (
-                df["ANYDESK"]
-                .fillna("")
-                .astype(str)
-                .str.replace(".0", "", regex=False)
-                .str.strip()
-            )
-
-        validar_columnas(df)
-
+    if df.empty:
         return df
 
-    except FileNotFoundError:
-        return pd.DataFrame()
+    # Renombrar columnas Supabase → nombres que usa app.py
+    df = df.rename(columns={
+        "id":               "ID",
+        "categoria":        "CATEGORIA",
+        "ubicacion":        "UBICACION",
+        "tipo":             "TIPO",
+        "unidad_funcional": "UNIDA FUNCIONAL",
+        "usuario_cargo":    "USUARIO O CARGO",
+        "marca":            "MARCA",
+        "procesador":       "PROCESADOR",
+        "espacio":          "ESPACIO",
+        "memoria_ram":      "MEMORIA RAM",
+        "monitor":          "MONITOR",
+        "nombre_equipo":    "NOMBRE DE EQUIPO",
+        "estado":           "ESTADO",
+        "anydesk":          "ANYDESK",
+        "fecha_factura":    "FECHA DE FAC",
+        "num_factura":      "Nº FACTURA",
+        "observacion":      "OBSERVACION",
+    })
 
-def save_data(df):
-
-    # ✅ EVITAR QUE ANYDESK SE GUARDE COMO FLOAT
+    # Limpiar ANYDESK
     if "ANYDESK" in df.columns:
-
         df["ANYDESK"] = (
             df["ANYDESK"]
             .fillna("")
@@ -46,4 +49,10 @@ def save_data(df):
             .str.strip()
         )
 
-    df.to_excel(FILE_PATH, index=False)
+    return df
+
+# ── Guardar / actualizar un equipo ───────────────────
+def save_data(df):
+    # Esta función ya no se usa directamente.
+    # Las operaciones se hacen en crud.py con Supabase.
+    pass
