@@ -305,7 +305,7 @@ if menu == "Inventario":
                 )
 
             with col3:
-                marcas = st.multiselect(
+                rams = st.multiselect(
                     "Memoria RAM",
                     options=sorted(df["MEMORIA RAM"].dropna().unique())
                 )
@@ -316,23 +316,40 @@ if menu == "Inventario":
             aplicar = st.form_submit_button("Aplicar filtros")
 
         
-        # ================= FILTRO =================
-        if aplicar:
+       
+        # ================= FILTRO AUTOMÁTICO =================
 
-            if estados:
-                df_filtrado = df_filtrado[df_filtrado["ESTADO"].isin(estados)]
+        if estados:
+            df_filtrado = df_filtrado[
+                df_filtrado["ESTADO"].isin(estados)
+            ]
 
-            if unidades:
-                df_filtrado = df_filtrado[df_filtrado["UNIDA FUNCIONAL"].isin(unidades)]
+        if unidades:
+            df_filtrado = df_filtrado[
+                df_filtrado["UNIDA FUNCIONAL"].isin(unidades)
+            ]
 
-            if rams:
-                df_filtrado = df_filtrado[df_filtrado["MEMORIA RAM"].isin(rams)]
+        if rams:
+            df_filtrado = df_filtrado[
+                df_filtrado["MEMORIA RAM"].isin(rams)
+            ]
 
-            if busqueda:
-                df_filtrado = df_filtrado[
-                    df_filtrado["MODELO"].str.lower().str.contains(busqueda, na=False)
-                    | df_filtrado["NOMBRE DE EQUIPO"].str.lower().str.contains(busqueda, na=False)
-                ]
+        if busqueda:
+
+            filtro_id = df_filtrado["ID"].astype(str).str.lower().str.contains(busqueda, na=False)
+
+            filtro_nombre = df_filtrado["NOMBRE DE EQUIPO"].astype(str).str.lower().str.contains(busqueda, na=False)
+
+            filtro_usuario = df_filtrado["USUARIO O CARGO"].astype(str).str.lower().str.contains(busqueda, na=False)
+
+            filtro_anydesk = df_filtrado["ANYDESK"].astype(str).str.lower().str.contains(busqueda, na=False)
+
+            df_filtrado = df_filtrado[
+                filtro_id |
+                filtro_nombre |
+                filtro_usuario |
+                filtro_anydesk
+            ]
 
         st.markdown(f"### Resultados: {len(df_filtrado)} equipo(s)")
         st.dataframe(df_filtrado, use_container_width=True)
