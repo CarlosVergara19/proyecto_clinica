@@ -1050,85 +1050,297 @@ elif menu == "Dashboard":
             st.plotly_chart(fig_procesador, use_container_width=True)
 
         # =============================
-        # EXPORTAR PDF 
-        # =============================
-        st.markdown("### 📄 Exportar Dashboard")
+# EXPORTAR PDF
+# =============================
+st.markdown("### 📄 Exportar Dashboard")
 
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-        from reportlab.lib.styles import getSampleStyleSheet
-        import tempfile
-        import plotly.io as pio
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Image,
+    PageBreak
+)
+from reportlab.lib.styles import getSampleStyleSheet
+import tempfile
+import matplotlib.pyplot as plt
 
-        def generar_pdf():
+def generar_pdf():
 
-            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-            doc = SimpleDocTemplate(tmp_file.name)
+    tmp_file = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pdf"
+    )
 
-            styles = getSampleStyleSheet()
-            contenido = []
+    doc = SimpleDocTemplate(tmp_file.name)
 
-            # =============================
-            # TITULO
-            # =============================
-            contenido.append(Paragraph("📊 Dashboard de Inventario", styles["Title"]))
-            contenido.append(Spacer(1, 12))
+    styles = getSampleStyleSheet()
+    contenido = []
 
-            # =============================
-            # KPIs
-            # =============================
-            contenido.append(Paragraph(f"Total equipos: {total}", styles["Normal"]))
-            contenido.append(Paragraph(f"Activos: {activos}", styles["Normal"]))
-            contenido.append(Paragraph(f"Mantenimiento: {mantenimiento}", styles["Normal"]))
-            contenido.append(Paragraph(f"Baja: {baja}", styles["Normal"]))
+    # =============================
+    # TITULO
+    # =============================
+    contenido.append(
+        Paragraph(
+            "Dashboard de Inventario - Clínica Regional San Jorge",
+            styles["Title"]
+        )
+    )
 
-            contenido.append(Spacer(1, 20))
+    contenido.append(Spacer(1, 15))
 
-            # =============================
-            # EXPORTAR GRÁFICOS COMO IMAGEN
-            # =============================
+    # =============================
+    # KPIs
+    # =============================
+    contenido.append(
+        Paragraph(
+            f"<b>Total equipos:</b> {total}",
+            styles["Heading2"]
+        )
+    )
 
-            # 🔹 Estado
-            img_estado = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pio.write_image(fig_estado, img_estado.name, width=600, height=400)
-            contenido.append(Paragraph("Distribución por Estado", styles["Heading2"]))
-            contenido.append(Image(img_estado.name, width=400, height=250))
-            contenido.append(Spacer(1, 20))
+    contenido.append(
+        Paragraph(
+            f"<b>Activos:</b> {activos}",
+            styles["Normal"]
+        )
+    )
 
-            # 🔹 Unidad funcional
-            img_unidad = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pio.write_image(fig_unidad, img_unidad.name, width=600, height=400)
-            contenido.append(Paragraph("Equipos por Unidad Funcional", styles["Heading2"]))
-            contenido.append(Image(img_unidad.name, width=400, height=250))
-            contenido.append(Spacer(1, 20))
+    contenido.append(
+        Paragraph(
+            f"<b>Mantenimiento:</b> {mantenimiento}",
+            styles["Normal"]
+        )
+    )
 
-            # 🔹 Procesadores
-            img_procesador = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pio.write_image(fig_procesador, img_procesador.name, width=600, height=400)
-            contenido.append(Paragraph("Top Procesadores", styles["Heading2"]))
-            contenido.append(Image(img_procesador.name, width=400, height=250))
-            contenido.append(Spacer(1, 20))
+    contenido.append(
+        Paragraph(
+            f"<b>Baja:</b> {baja}",
+            styles["Normal"]
+        )
+    )
 
-            # 🔹 RAM
-            img_ram = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pio.write_image(fig_ram, img_ram.name, width=600, height=400)
-            contenido.append(Paragraph("Distribución RAM", styles["Heading2"]))
-            contenido.append(Image(img_ram.name, width=400, height=250))
-            contenido.append(Spacer(1, 20))
+    contenido.append(Spacer(1, 20))
 
-            # =============================
-            # CONSTRUIR PDF
-            # =============================
-            doc.build(contenido)
+    # =====================================
+    # GRAFICO ESTADO
+    # =====================================
+    img_estado = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".png"
+    )
 
-            return tmp_file.name
-        
-        if st.button("📥 Descargar Dashboard en PDF"):
-            pdf_path = generar_pdf()
+    plt.figure(figsize=(6, 4))
 
-            with open(pdf_path, "rb") as f:
-                st.download_button(
-                       "Descargar reporte completo",
-                    f,
-                    file_name="dashboard_clinica.pdf",
-                    mime="application/pdf"
-                )
+    plt.pie(
+        estado_counts["Cantidad"],
+        labels=estado_counts["Estado"],
+        autopct="%1.0f%%"
+    )
+
+    plt.title("Estado de Equipos")
+
+    plt.savefig(
+        img_estado.name,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    contenido.append(
+        Paragraph(
+            "Distribución por Estado",
+            styles["Heading2"]
+        )
+    )
+
+    contenido.append(
+        Image(
+            img_estado.name,
+            width=400,
+            height=250
+        )
+    )
+
+    contenido.append(Spacer(1, 15))
+
+    # =====================================
+    # GRAFICO UNIDAD FUNCIONAL
+    # =====================================
+    img_unidad = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".png"
+    )
+
+    plt.figure(figsize=(8, 4))
+
+    barras = plt.bar(
+        unidad_counts["Unidad"],
+        unidad_counts["Cantidad"]
+    )
+
+    plt.xticks(rotation=45, ha="right")
+    plt.title("Equipos por Unidad Funcional")
+
+    for barra in barras:
+        altura = barra.get_height()
+        plt.text(
+            barra.get_x() + barra.get_width()/2,
+            altura,
+            str(int(altura)),
+            ha="center"
+        )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        img_unidad.name,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    contenido.append(
+        Paragraph(
+            "Equipos por Unidad Funcional",
+            styles["Heading2"]
+        )
+    )
+
+    contenido.append(
+        Image(
+            img_unidad.name,
+            width=450,
+            height=250
+        )
+    )
+
+    contenido.append(Spacer(1, 15))
+
+    # =====================================
+    # GRAFICO PROCESADORES
+    # =====================================
+    img_procesador = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".png"
+    )
+
+    plt.figure(figsize=(8, 4))
+
+    barras = plt.bar(
+        procesador_counts["Procesador"],
+        procesador_counts["Cantidad"]
+    )
+
+    plt.xticks(rotation=45, ha="right")
+    plt.title("Top Procesadores")
+
+    for barra in barras:
+        altura = barra.get_height()
+        plt.text(
+            barra.get_x() + barra.get_width()/2,
+            altura,
+            str(int(altura)),
+            ha="center"
+        )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        img_procesador.name,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    contenido.append(
+        Paragraph(
+            "Top Procesadores",
+            styles["Heading2"]
+        )
+    )
+
+    contenido.append(
+        Image(
+            img_procesador.name,
+            width=450,
+            height=250
+        )
+    )
+
+    contenido.append(Spacer(1, 15))
+
+    # =====================================
+    # GRAFICO RAM
+    # =====================================
+    img_ram = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".png"
+    )
+
+    plt.figure(figsize=(8, 4))
+
+    barras = plt.bar(
+        ram_counts["RAM"],
+        ram_counts["Cantidad"]
+    )
+
+    plt.xticks(rotation=45, ha="right")
+    plt.title("Distribución RAM")
+
+    for barra in barras:
+        altura = barra.get_height()
+        plt.text(
+            barra.get_x() + barra.get_width()/2,
+            altura,
+            str(int(altura)),
+            ha="center"
+        )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        img_ram.name,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    contenido.append(
+        Paragraph(
+            "Distribución de RAM",
+            styles["Heading2"]
+        )
+    )
+
+    contenido.append(
+        Image(
+            img_ram.name,
+            width=450,
+            height=250
+        )
+    )
+
+    # =============================
+    # GENERAR PDF
+    # =============================
+    doc.build(contenido)
+
+    return tmp_file.name
+
+@st.cache_data
+def obtener_pdf():
+    pdf_path = generar_pdf()
+
+    with open(pdf_path, "rb") as f:
+        return f.read()
+
+pdf_bytes = obtener_pdf()
+
+st.download_button(
+    label="📥 Descargar Dashboard en PDF",
+    data=pdf_bytes,
+    file_name="dashboard_clinica.pdf",
+    mime="application/pdf",
+    use_container_width=True
+)
