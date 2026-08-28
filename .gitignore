@@ -1,16 +1,32 @@
-# Base de datos local
-*.db
-
-# Secrets de Streamlit (credenciales — NUNCA subir a GitHub)
+# ---- Credenciales: NUNCA subir ----
 .streamlit/secrets.toml
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Descargas temporales
-descargas/
-
-# Variables de entorno
 .env
+*.pem
+*.key
+ 
+# ---- Datos reales de la clínica ----
+data/
+descargas/
+*.xlsx
+*.xls
+*.csv
+!data/ejemplo/*.csv
+ 
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+ 
+# ---- Base de datos local ----
+*.db
+*.sqlite3
+ 
+# ---- Editor y sistema ----
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
